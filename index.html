@@ -117,6 +117,11 @@ nav.tabs button[aria-current="page"]{color:var(--text);background:var(--surface2
 .topline .av{width:44px;height:44px}
 .static{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .err{background:#3D1C18;border:1px solid var(--bad);color:#F8C9C0;border-radius:var(--r);padding:12px;font-size:14px}
+.confirmed{display:flex;gap:12px;align-items:center;background:#16362A;border:1px solid var(--good);border-radius:var(--r);padding:12px 14px}
+.confirmed .tick{width:34px;height:34px;border-radius:50%;background:var(--good);color:#082014;display:grid;place-items:center;font-weight:800;flex:none}
+.confirmed b{display:block;font-size:16px;color:#BFF0D4}
+.confirmed .when{font-family:var(--mono);font-size:13px;color:var(--text)}
+.confirmed .muted{margin-top:2px}
 </style>
 </head>
 <body>
@@ -142,6 +147,7 @@ const FARES=["Paid in gossip","Paid in crisps","Paid in a hug","Put it on the ta
 let sb=null;
 const S={
   passengers:[], rides:[], notes:{}, settings:{pub:"The Ship and Whale",home:"Home"},
+  trip:{startedAt:null,pax:[]}, restored:false,
   pin:null, loaded:false, error:null,
   tab:"pax", stage:"book", sel:new Set(["monica"]), draft:{}, detail:null, confirm:null, date:today(), fare:FARES[0], busy:false
 };
@@ -159,6 +165,11 @@ function starStr(n){return "★".repeat(n)+"☆".repeat(5-n);}
 function sortedPax(){return [...active()].sort((a,b)=>(b.wife?1:0)-(a.wife?1:0)||a.name.localeCompare(b.name));}
 function isDriver(){return !!S.pin;}
 function note(rid,pid){return (S.notes[rid]||{})[pid]||"";}
+/* a trip counts as live for 8 hours at most, in case it never gets ended */
+function tripLive(){return !!S.trip.startedAt&&(Date.now()-new Date(S.trip.startedAt).getTime())<8*3600e3;}
+function fmtStamp(ts){return new Date(ts).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});}
+function fmtTime(ts){return new Date(ts).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});}
+function syncTrip(action){return call("tamu_set_trip",{p_action:action,p_passengers:action==="end"?[]:[...S.sel]});}
 
 function stats(pid){
   let sum=0,n=0; const tags={};
@@ -182,7 +193,10 @@ async function load(){
     if(p.error||r.error) throw (p.error||r.error);
     S.passengers=p.data||[];
     S.rides=(r.data||[]).map(x=>({id:x.id,date:x.ride_date,pub:x.pub,ratings:x.ratings||{},createdAt:x.created_at}));
-    if(s.data) S.settings={pub:s.data.pub,home:s.data.home};
+    if(s.data){S.settings={pub:s.data.pub,home:s.data.home};S.trip={startedAt:s.data.trip_started_at||null,pax:Array.isArray(s.data.trip_passengers)?s.data.trip_passengers:[]};}
+    /* driver reopened the site mid-trip: pick the trip back up */
+    if(isDriver()&&!S.restored&&S.stage==="book"&&tripLive()){S.sel=new Set(S.trip.pax);S.stage="trip";}
+    S.restored=true;
     S.sel.forEach(id=>{if(!active().some(p=>p.id===id))S.sel.delete(id);});
     S.error=null;
     if(isDriver()) await loadNotes();
@@ -276,12 +290,16 @@ function viewBook(){
 }
 function viewTrip(){
   const names=[...S.sel].map(id=>esc(pById(id).name)).join(", ");
+  const others=sortedPax().filter(p=>!S.sel.has(p.id)).map(p=>`<button class="chip" data-act="toggle" data-id="${esc(p.id)}" aria-pressed="false">${av(p)}${esc(p.name)}</button>`).join("");
   return `
   <div class="map">${mapSVG()}<div class="eta">Arriving <b>${esc(S.settings.home)}</b> in 8 min</div></div>
   <section class="sheet">
     <h2>On trip</h2>
     ${driverBlock()}
-    <div class="muted">On board: ${names}</div>
+    <div class="muted">${S.trip.startedAt?`Confirmed at ${fmtTime(S.trip.startedAt)} · `:""}On board: ${names}</div>
+    <h3>Someone jumping in?</h3>
+    ${others?`<div class="row">${others}</div>`:""}
+    <form class="addp" id="addform"><input id="newname" placeholder="Add another mum" autocomplete="off" maxlength="30"><button class="btn small ghost" type="submit">Add</button></form>
     <div class="fare"><span>${esc(S.fare)}</span><b>£0.00</b></div>
     <button class="btn" data-act="end">End trip and rate</button>
     <button class="btn ghost" data-act="cancel">Cancel trip</button>
@@ -341,7 +359,9 @@ function viewHist(){
 }
 
 function render(){
-  const top=`<header class="top"><div class="brand">Tamu<i>ride</i></div><span class="status">${S.stage==="trip"?"On trip":isDriver()?"Driver mode":"Thursday night"}</span></header>`;
+  const guestTrip=!isDriver()&&S.loaded&&!S.error&&tripLive();
+  const top=`<header class="top"><div class="brand">Tamu<i>ride</i></div><span class="status">${S.stage==="trip"||guestTrip?"On trip":isDriver()?"Driver mode":"Thursday night"}</span></header>`
+    +(guestTrip?`<div class="confirmed" role="status"><span class="tick">✓</span><div><b>Trip confirmed</b><span class="when">${esc(fmtStamp(S.trip.startedAt))}</span>${S.trip.pax.length?`<div class="muted">On board: ${S.trip.pax.map(id=>esc(pById(id).name)).join(", ")}</div>`:""}</div></div>`:"");
   let body="";
   if(S.error) body=`<div class="err">${esc(S.error)}</div>`;
   else if(!S.loaded) body=`<div class="empty">Loading the trip log…</div>`;
@@ -361,9 +381,9 @@ document.addEventListener("click",async e=>{
   const tb=e.target.closest("nav.tabs button,[data-act=goto]"); if(tb){S.tab=tb.dataset.tab;S.detail=null;S.confirm=null;render();window.scrollTo(0,0);return;}
   const b=e.target.closest("[data-act]"); if(!b)return;
   const a=b.dataset.act, id=b.dataset.id;
-  if(a==="toggle"){S.sel.has(id)?S.sel.delete(id):S.sel.add(id);render();}
-  else if(a==="start"){S.fare=FARES[Math.floor(Math.random()*FARES.length)];S.stage="trip";render();}
-  else if(a==="cancel"){S.stage="book";render();}
+  if(a==="toggle"){S.sel.has(id)?S.sel.delete(id):S.sel.add(id);render();if(S.stage==="trip"&&await syncTrip("update"))toast(pById(id).name+" is on board");}
+  else if(a==="start"){S.fare=FARES[Math.floor(Math.random()*FARES.length)];S.stage="trip";render();if(await syncTrip("start"))await load();}
+  else if(a==="cancel"){S.stage="book";S.trip={startedAt:null,pax:[]};render();syncTrip("end");}
   else if(a==="signout"){signOut();}
   else if(a==="end"){S.draft={};S.sel.forEach(id=>S.draft[id]={stars:5,tags:[],note:""});S.date=today();S.stage="rate";render();window.scrollTo(0,0);}
   else if(a==="star"){S.draft[id].stars=+b.dataset.v;render();}
@@ -376,6 +396,7 @@ document.addEventListener("click",async e=>{
     const ok=await call("tamu_save_ride",{p_id:rid,p_date:S.date||today(),p_pub:S.settings.pub,p_ratings:ratings,p_notes:notes});
     S.busy=false;
     if(!ok){if(isDriver())render();return;}
+    await syncTrip("end");
     S.stage="book";S.draft={};S.tab="hist";await load();window.scrollTo(0,0);toast("Trip saved. Thanks for driving with Tamu ride");
   }
   else if(a==="open"){S.detail=id;S.confirm=null;render();window.scrollTo(0,0);}
@@ -400,7 +421,7 @@ document.addEventListener("submit",async e=>{
     const inp=document.getElementById("newname"); const name=inp.value.trim(); if(!name)return;
     if(active().some(p=>p.name.toLowerCase()===name.toLowerCase())){toast(name+" is already on the list",true);return;}
     const id=(name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"p")+"-"+Math.random().toString(36).slice(2,6);
-    if(await call("tamu_add_passenger",{p_id:id,p_name:name})){S.sel.add(id);await load();}
+    if(await call("tamu_add_passenger",{p_id:id,p_name:name})){S.sel.add(id);if(S.stage==="trip")await syncTrip("update");await load();if(S.stage==="trip")toast(name+" is on board");}
   }
 });
 document.addEventListener("input",e=>{
@@ -410,6 +431,8 @@ document.addEventListener("input",e=>{
   else if(t.id==="ridedate"){S.date=t.value;}
 });
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&sb&&S.stage==="book"&&!document.activeElement.matches("input,textarea"))load();});
+/* passengers' screens check for a new trip every 30 seconds */
+setInterval(()=>{if(sb&&!isDriver()&&document.visibilityState==="visible"&&!document.activeElement.matches("input,textarea"))load();},30000);
 
 render();
 if(!window.supabase||SUPABASE_ANON_KEY.startsWith("PASTE")){
