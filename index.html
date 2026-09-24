@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101219">
+<title>Tamu ride</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@600&display=swap">
+<style>
+:root{
+  color-scheme: dark;
+  --ground:#101219; --surface:#1B1E27; --surface2:#242835; --line:#2E3342;
+  --text:#F3EFE7; --muted:#9B9EAC; --amber:#F2B33D; --amber-ink:#2A1D05;
+  --good:#5CC98C; --bad:#E8705F; --plate:#F7D23E;
+  --display:"Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --body:"DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+  --r:14px;
+}
+html,body{background:var(--ground);color:var(--text);margin:0;}
+body{font-family:var(--body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;}
+*{box-sizing:border-box}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.app{max-width:520px;margin:0 auto;padding-inline:16px;padding-block:calc(14px + env(safe-area-inset-top, 0px)) 110px;display:flex;flex-direction:column;gap:16px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;display:flex;align-items:baseline;gap:6px}
+.brand i{font-style:normal;color:var(--amber)}
+.status{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.plate{font-family:var(--mono);font-weight:600;background:var(--plate);color:#15130B;border-radius:4px;padding:2px 8px;font-size:13px;letter-spacing:.06em;border:1px solid #15130B55}
+
+.map{position:relative;border-radius:18px;overflow:hidden;background:#0B0D13;border:1px solid var(--line);aspect-ratio:16/10;max-width:100%}
+.map svg{display:block;width:100%;height:100%}
+.map .eta{position:absolute;left:12px;bottom:12px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:500}
+.map .eta b{color:var(--amber)}
+
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:14px}
+h2{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0;font-weight:700}
+.route{display:grid;grid-template-columns:18px 1fr;gap:4px 10px;align-items:center}
+.route .dot{width:10px;height:10px;border-radius:50%;background:var(--amber);justify-self:center}
+.route .sq{width:10px;height:10px;background:var(--text);justify-self:center}
+.route .bar{width:2px;height:14px;background:var(--line);justify-self:center}
+.route input{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:6px 12px 6px 6px;font-weight:500}
+.chip[aria-pressed="true"]{border-color:var(--amber);background:#3A2E14}
+.chip .av{width:26px;height:26px;font-size:11px}
+.av{border-radius:50%;display:grid;place-items:center;font-weight:700;background:var(--surface2);border:1px solid var(--line);flex:none}
+.av.wife{background:var(--amber);color:var(--amber-ink);border-color:var(--amber)}
+.addp{display:flex;gap:8px}
+.addp input{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+.btn{border:0;border-radius:12px;padding:14px 16px;font-weight:700;font-size:16px;background:var(--amber);color:var(--amber-ink);width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.ghost{background:var(--surface2);color:var(--text);border:1px solid var(--line)}
+.btn.small{width:auto;padding:9px 14px;font-size:14px}
+.fare{display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--line);padding-top:12px;font-size:14px;color:var(--muted)}
+.fare b{font-family:var(--mono);color:var(--text);font-size:16px}
+.driver{display:flex;gap:12px;align-items:center}
+.driver .av{width:48px;height:48px;font-size:17px;background:#2B3040}
+.driver .who{flex:1;min-width:0}
+.driver .who b{display:block;font-size:16px}
+.muted{color:var(--muted);font-size:13px}
+
+.rcard{border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:12px;background:var(--surface2)}
+.rcard .head{display:flex;gap:10px;align-items:center}
+.rcard .head .av{width:40px;height:40px}
+.stars{display:flex;gap:4px}
+.stars button{background:none;border:0;padding:2px;font-size:32px;line-height:1;color:#454B5C}
+.stars button.on{color:var(--amber)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 10px;font-size:13px}
+.tag.g[aria-pressed="true"]{border-color:var(--good);background:#16362A;color:#BFF0D4}
+.tag.b[aria-pressed="true"]{border-color:var(--bad);background:#3D1C18;color:#F8C9C0}
+textarea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;resize:vertical;min-height:44px}
+.datein{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+
+.list{display:flex;flex-direction:column;gap:10px}
+.pcard{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;text-align:left;width:100%}
+.pcard .av{width:44px;height:44px}
+.pcard .score{font-family:var(--display);font-weight:800;font-size:24px;text-align:right;font-variant-numeric:tabular-nums}
+.pcard .score small{display:block;font-family:var(--body);font-weight:500;font-size:12px;color:var(--muted)}
+.crown{font-size:11px;font-weight:700;background:var(--amber);color:var(--amber-ink);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px;text-transform:uppercase;letter-spacing:.06em}
+.ride{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.ride .t{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ride .t b{font-size:15px}
+.pr{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.pr .s{color:var(--amber);letter-spacing:1px;white-space:nowrap}
+.note{font-size:13px;color:var(--muted);font-style:italic}
+.minitags{display:flex;flex-wrap:wrap;gap:4px}
+.minitags span{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:1px 7px;color:var(--muted)}
+.linkbtn{background:none;border:0;color:var(--muted);font-size:13px;text-decoration:underline;padding:0}
+.linkbtn.danger{color:var(--bad)}
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:22px;text-align:center;color:var(--muted)}
+.back{background:none;border:0;color:var(--amber);font-weight:700;padding:0;align-self:flex-start}
+.bigscore{display:flex;align-items:baseline;gap:10px}
+.bigscore b{font-family:var(--display);font-size:48px;font-weight:800;line-height:1}
+.tally{display:flex;flex-wrap:wrap;gap:6px}
+.tally span{font-size:13px;background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+.tally span.g{border-color:#2F6B4B}.tally span.b{border-color:#7A3A31}
+
+nav.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:8px 16px calc(8px + env(safe-area-inset-bottom, 0px));display:flex;justify-content:center}
+nav.tabs .in{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:520px;width:100%}
+nav.tabs button{background:none;border:0;border-radius:10px;padding:8px 4px;color:var(--muted);font-weight:700;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav.tabs button svg{width:22px;height:22px}
+nav.tabs button[aria-current="page"]{color:var(--text);background:var(--surface2)}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);background:var(--good);color:#082014;font-weight:700;padding:10px 16px;border-radius:999px;font-size:14px;z-index:5;max-width:calc(100% - 32px);text-align:center}
+.warn{font-size:12px;color:var(--muted);text-align:center}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+<style>
+.pinform{display:flex;gap:8px}
+.pinform input{flex:1;min-width:0;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;letter-spacing:.2em}
+.topline{display:flex;gap:12px;align-items:center;background:var(--surface2);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.topline .av{width:44px;height:44px}
+.static{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.err{background:#3D1C18;border:1px solid var(--bad);color:#F8C9C0;border-radius:var(--r);padding:12px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="app" id="app"><header class="top"><div class="brand">Tamu<i>ride</i></div></header><div class="empty">Loading the trip log…</div></div>
+<nav class="tabs" aria-label="Sections"><div class="in">
+  <button id="tab-ride" data-tab="ride"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 16l1.5-5.5A2 2 0 0 1 8.4 9h7.2a2 2 0 0 1 1.9 1.5L19 16"/><rect x="3" y="16" width="18" height="3" rx="1.2"/><circle cx="7" cy="19.5" r="1.2" fill="currentColor"/><circle cx="17" cy="19.5" r="1.2" fill="currentColor"/></svg>Ride</button>
+  <button id="tab-pax" data-tab="pax"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.3 3-5 6-5s5.4 1.7 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14c2.6 0 4.4 1.4 5 4"/></svg>Passengers</button>
+  <button id="tab-hist" data-tab="hist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>Trips</button>
+</div></nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+/* ====== SETTINGS: paste your Supabase key here ====== */
+const SUPABASE_URL = "https://zswkturjniankxonlpwb.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_WMAU-T4mQczdk9uNEbYVNw_T7rBtq5M";
+/* ==================================================== */
+
+(function(){
+const GOOD=["Great chat","Ready at the door","Sang along","Brought snacks","Top gossip","Said thank you"];
+const BAD=["Kept me waiting","Backseat driver","Kebab stop request","Too loud","Forgot her bag","Changed the radio"];
+const FARES=["Paid in gossip","Paid in crisps","Paid in a hug","Put it on the tab","Paid in compliments"];
+
+let sb=null;
+const S={
+  passengers:[], rides:[], notes:{}, settings:{pub:"The Ship and Whale",home:"Home"},
+  pin:null, loaded:false, error:null,
+  tab:"pax", stage:"book", sel:new Set(["monica"]), draft:{}, detail:null, confirm:null, date:today(), fare:FARES[0], busy:false
+};
+try{ S.pin=localStorage.getItem("tamu_pin"); }catch(e){}
+if(S.pin) S.tab="ride";
+
+function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function initials(n){return esc(String(n).trim().split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase());}
+function av(p){return `<span class="av ${p.wife?"wife":""}">${initials(p.name)}</span>`;}
+function pById(id){return S.passengers.find(p=>p.id===id)||{id,name:"Former passenger"};}
+function active(){return S.passengers.filter(p=>p.active!==false);}
+function fmtDate(iso){const d=new Date(iso+"T12:00:00");return d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"});}
+function starStr(n){return "★".repeat(n)+"☆".repeat(5-n);}
+function sortedPax(){return [...active()].sort((a,b)=>(b.wife?1:0)-(a.wife?1:0)||a.name.localeCompare(b.name));}
+function isDriver(){return !!S.pin;}
+function note(rid,pid){return (S.notes[rid]||{})[pid]||"";}
+
+function stats(pid){
+  let sum=0,n=0; const tags={};
+  const rides=S.rides.filter(r=>r.ratings&&r.ratings[pid]);
+  rides.forEach(r=>{const x=r.ratings[pid];sum+=x.stars;n++;(x.tags||[]).forEach(t=>tags[t]=(tags[t]||0)+1);});
+  return {avg:n?sum/n:null,n,tags,rides};
+}
+function ranked(){return active().map(p=>({p,s:stats(p.id)})).sort((a,b)=>(b.s.avg??-1)-(a.s.avg??-1)||b.s.n-a.s.n);}
+
+let toastT;
+function toast(msg,bad){let t=document.querySelector(".toast");if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t);}t.textContent=msg;t.style.background=bad?"var(--bad)":"var(--good)";t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3000);}
+
+/* ---------- data ---------- */
+async function load(){
+  try{
+    const [p,r,s]=await Promise.all([
+      sb.from("tamu_passengers").select("*"),
+      sb.from("tamu_rides").select("*"),
+      sb.from("tamu_settings").select("*").eq("id",1).maybeSingle()
+    ]);
+    if(p.error||r.error) throw (p.error||r.error);
+    S.passengers=p.data||[];
+    S.rides=(r.data||[]).map(x=>({id:x.id,date:x.ride_date,pub:x.pub,ratings:x.ratings||{},createdAt:x.created_at}));
+    if(s.data) S.settings={pub:s.data.pub,home:s.data.home};
+    S.sel.forEach(id=>{if(!active().some(p=>p.id===id))S.sel.delete(id);});
+    S.error=null;
+    if(isDriver()) await loadNotes();
+  }catch(e){ S.error="Couldn't load the trip log. Check your connection and refresh."; }
+  S.loaded=true;
+  if(S.stage!=="rate") render();
+}
+async function loadNotes(){
+  const {data,error}=await sb.rpc("tamu_get_notes",{p_pin:S.pin});
+  if(error) return;
+  S.notes={}; (data||[]).forEach(n=>{(S.notes[n.ride_id]=S.notes[n.ride_id]||{})[n.passenger_id]=n.note;});
+}
+async function call(fn,args){
+  const {data,error}=await sb.rpc(fn,{p_pin:S.pin,...args});
+  if(error){toast("Couldn't save. Check your connection and try again.",true);return false;}
+  if(data!==true){toast("Your PIN wasn't accepted. Sign in again.",true);signOut();return false;}
+  return true;
+}
+function signOut(){S.pin=null;S.notes={};try{localStorage.removeItem("tamu_pin");}catch(e){}S.stage="book";S.tab="pax";render();}
+
+/* ---------- map ---------- */
+function mapSVG(){
+  return `<svg viewBox="0 0 400 250" aria-label="Route from ${esc(S.settings.pub)} to ${esc(S.settings.home)}" role="img">
+  <rect width="400" height="250" fill="#0B0D13"/>
+  <g stroke="#1C2130" stroke-width="10" fill="none" stroke-linecap="round">
+    <path d="M-10 60 L410 40"/><path d="M-10 170 L410 190"/><path d="M90 -10 L120 260"/><path d="M270 -10 L250 260"/>
+    <path d="M-10 115 C120 110 260 130 410 118"/>
+  </g>
+  <g stroke="#171B27" stroke-width="5" fill="none"><path d="M180 -10 L190 260"/><path d="M340 -10 L350 260"/><path d="M-10 225 L410 230"/><path d="M30 -10 L45 260"/></g>
+  <path d="M40 150 q30 -40 70 -10 q40 30 70 -5" fill="#14281F" opacity=".7"/>
+  <path id="route" d="M70 72 L112 70 L118 116 C170 118 210 122 256 124 L252 186 L330 190" fill="none" stroke="#F2B33D" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 9"/>
+  <circle cx="70" cy="72" r="9" fill="#F2B33D"/><circle cx="70" cy="72" r="3.5" fill="#101219"/>
+  <rect x="321" y="181" width="18" height="18" fill="#F3EFE7"/><rect x="327" y="187" width="6" height="6" fill="#101219"/>
+  <text x="80" y="50" fill="#F3EFE7" font-family="DM Sans, sans-serif" font-size="13" font-weight="700" text-anchor="start">${esc(S.settings.pub)}</text>
+  <text x="330" y="220" fill="#F3EFE7" font-family="DM Sans, sans-serif" font-size="13" font-weight="700" text-anchor="middle">${esc(S.settings.home)}</text>
+  <g id="car"><circle r="11" fill="#F3EFE7"/><path d="M-5 2 L-3.5 -3 H3.5 L5 2 Z" fill="#101219"/><rect x="-6" y="1.5" width="12" height="3" rx="1" fill="#101219"/></g>
+  </svg>`;
+}
+let raf;
+function animateCar(onTrip){
+  cancelAnimationFrame(raf);
+  const path=document.getElementById("route"), car=document.getElementById("car"); if(!path||!car)return;
+  const L=path.getTotalLength();
+  const place=f=>{const p=path.getPointAtLength(L*f);car.setAttribute("transform",`translate(${p.x},${p.y})`);};
+  if(!onTrip||matchMedia("(prefers-reduced-motion: reduce)").matches){place(onTrip?0.5:0.12);return;}
+  const t0=performance.now();
+  const step=t=>{place(((t-t0)/9000)%1);raf=requestAnimationFrame(step);};
+  raf=requestAnimationFrame(step);
+}
+
+/* ---------- views ---------- */
+function driverBlock(){
+  return `<div class="driver"><span class="av">ST</span><div class="who"><b>Simone</b><span class="muted">Your Thursday driver · 4.98 ★ (self-assessed)</span></div><span class="plate">TAMU 1</span></div>`;
+}
+function viewGuest(){
+  const top=ranked().find(x=>x.s.n>0);
+  const last=[...S.rides].sort((a,b)=>b.date.localeCompare(a.date))[0];
+  return `
+  <div class="map">${mapSVG()}<div class="eta">Every Thursday from <b>${esc(S.settings.pub)}</b></div></div>
+  <section class="sheet">
+    <h2>Thursday pub run</h2>
+    ${driverBlock()}
+    ${top?`<div class="topline">${av(top.p)}<div><b>${esc(top.p.name)}</b> is top passenger<div class="muted">${top.s.avg.toFixed(2)} ★ over ${top.s.n} trip${top.s.n>1?"s":""}</div></div></div>`:`<p class="muted">No trips rated yet. Check back after Thursday.</p>`}
+    ${last?`<p class="muted">Last trip: ${fmtDate(last.date)}</p>`:""}
+    <button class="btn ghost" data-act="goto" data-tab="pax">See the leaderboard</button>
+  </section>
+  <section class="sheet">
+    <h3>Driver sign in</h3>
+    <form class="pinform" id="pinform"><input id="pin" type="password" inputmode="text" autocomplete="current-password" placeholder="PIN" aria-label="Driver PIN"><button class="btn small" type="submit">Sign in</button></form>
+  </section>`;
+}
+function viewBook(){
+  const chips=sortedPax().map(p=>`<button class="chip" data-act="toggle" data-id="${esc(p.id)}" aria-pressed="${S.sel.has(p.id)}">${av(p)}${esc(p.name)}</button>`).join("");
+  const n=S.sel.size;
+  return `
+  <div class="map">${mapSVG()}<div class="eta">Driver <b>2 min</b> away</div></div>
+  <section class="sheet">
+    <h2>Thursday pub run</h2>
+    <div class="route">
+      <span class="dot"></span><input id="pub" aria-label="Pickup" value="${esc(S.settings.pub)}">
+      <span class="bar"></span><span></span>
+      <span class="sq"></span><input id="home" aria-label="Drop-off" value="${esc(S.settings.home)}">
+    </div>
+    <h3>Who's getting in?</h3>
+    <div class="row">${chips}</div>
+    <form class="addp" id="addform"><input id="newname" placeholder="Add another mum" autocomplete="off" maxlength="30"><button class="btn small ghost" type="submit">Add</button></form>
+    <div class="fare"><span>Tamu ride Mum-XL · ${n} passenger${n===1?"":"s"}</span><b>£0.00</b></div>
+    <button class="btn" data-act="start" ${n?"":"disabled"}>Confirm pickup</button>
+    <button class="linkbtn" data-act="signout">Sign out of driver mode</button>
+  </section>`;
+}
+function viewTrip(){
+  const names=[...S.sel].map(id=>esc(pById(id).name)).join(", ");
+  return `
+  <div class="map">${mapSVG()}<div class="eta">Arriving <b>${esc(S.settings.home)}</b> in 8 min</div></div>
+  <section class="sheet">
+    <h2>On trip</h2>
+    ${driverBlock()}
+    <div class="muted">On board: ${names}</div>
+    <div class="fare"><span>${esc(S.fare)}</span><b>£0.00</b></div>
+    <button class="btn" data-act="end">End trip and rate</button>
+    <button class="btn ghost" data-act="cancel">Cancel trip</button>
+  </section>`;
+}
+function viewRate(){
+  const cards=[...S.sel].map(id=>{
+    const p=pById(id), d=S.draft[id];
+    const stars=[1,2,3,4,5].map(i=>`<button data-act="star" data-id="${esc(id)}" data-v="${i}" class="${i<=d.stars?"on":""}" aria-label="${i} star${i>1?"s":""}">★</button>`).join("");
+    const tg=(arr,c)=>arr.map(t=>`<button class="tag ${c}" data-act="tag" data-id="${esc(id)}" data-t="${esc(t)}" aria-pressed="${d.tags.includes(t)}">${esc(t)}</button>`).join("");
+    return `<div class="rcard">
+      <div class="head">${av(p)}<div><b>${esc(p.name)}</b><div class="muted">How was ${esc(p.name)} as a passenger?</div></div></div>
+      <div class="stars" role="group" aria-label="Rating for ${esc(p.name)}">${stars}</div>
+      <div class="tags">${tg(GOOD,"g")}</div>
+      <div class="tags">${tg(BAD,"b")}</div>
+      <textarea id="note-${esc(id)}" data-id="${esc(id)}" placeholder="Private note, only you see this (optional)" maxlength="200">${esc(d.note)}</textarea>
+    </div>`;
+  }).join("");
+  return `<section class="sheet">
+    <h2>Rate your passengers</h2>
+    <div class="row"><span class="muted">Trip date</span><input type="date" class="datein" id="ridedate" value="${esc(S.date)}"></div>
+    ${cards}
+    <button class="btn" data-act="submit" ${S.busy?"disabled":""}>${S.busy?"Saving…":"Submit ratings"}</button>
+  </section>`;
+}
+function viewPax(){
+  if(S.detail) return viewPaxDetail(S.detail);
+  const r=ranked(); const top=r.find(x=>x.s.n>0);
+  const rows=r.map(({p,s})=>`<button class="pcard" data-act="open" data-id="${esc(p.id)}">${av(p)}
+      <div><b>${esc(p.name)}</b>${top&&top.p.id===p.id?`<span class="crown">Top passenger</span>`:""}<div class="muted">${s.n?`${s.n} trip${s.n>1?"s":""}`:"No trips rated yet"}${p.wife?" · Wife, VIP":""}</div></div>
+      <div class="score">${s.avg!=null?s.avg.toFixed(2):"–"}<small>${s.avg!=null?"★ average":""}</small></div></button>`).join("");
+  return `<h2>Passengers</h2><p class="muted">Ranked by average star rating across every Thursday run.</p><div class="list">${rows||`<div class="empty">No passengers yet.</div>`}</div>`;
+}
+function viewPaxDetail(id){
+  const p=pById(id), s=stats(id);
+  const tally=Object.entries(s.tags).sort((a,b)=>b[1]-a[1]).map(([t,c])=>`<span class="${GOOD.includes(t)?"g":"b"}">${esc(t)} ×${c}</span>`).join("");
+  const rides=[...s.rides].sort((a,b)=>b.date.localeCompare(a.date)).map(r=>{const x=r.ratings[id];const nt=isDriver()?note(r.id,id):"";return `<div class="ride"><div class="t"><b>${fmtDate(r.date)}</b><span style="color:var(--amber)">${starStr(x.stars)}</span></div>${nt?`<div class="note">“${esc(nt)}”</div>`:""}${(x.tags||[]).length?`<div class="minitags">${x.tags.map(t=>`<span>${esc(t)}</span>`).join("")}</div>`:""}</div>`;}).join("");
+  const conf=S.confirm==="p:"+id;
+  const rm=(!isDriver()||p.wife)?"":(conf?`<div class="row"><span class="muted">Remove ${esc(p.name)}? Her past ratings stay in Trips.</span><button class="btn small ghost" data-act="rmp" data-id="${esc(id)}">Remove</button><button class="linkbtn" data-act="noconf">Keep</button></div>`:`<button class="linkbtn danger" data-act="askrmp" data-id="${esc(id)}">Remove passenger</button>`);
+  return `<button class="back" data-act="close">‹ Passengers</button>
+  <section class="sheet">
+    <div class="driver">${av(p)}<div class="who"><b>${esc(p.name)}</b><span class="muted">${s.n} rated trip${s.n===1?"":"s"}</span></div></div>
+    <div class="bigscore"><b>${s.avg!=null?s.avg.toFixed(2):"–"}</b><span class="muted">★ passenger rating</span></div>
+    ${tally?`<div class="tally">${tally}</div>`:""}
+  </section>
+  <div class="list">${rides||`<div class="empty">No rated trips yet.</div>`}</div>${rm}`;
+}
+function viewHist(){
+  const rides=[...S.rides].sort((a,b)=>b.date.localeCompare(a.date)||String(b.createdAt).localeCompare(String(a.createdAt)));
+  if(!rides.length) return `<h2>Trips</h2><div class="empty">No trips yet. The first Thursday run shows up here once it's rated.</div>`;
+  return `<h2>Trips</h2><p class="muted">${rides.length} trip${rides.length>1?"s":""} logged · fares collected: £0.00</p><div class="list">${rides.map(r=>{
+    const lines=Object.entries(r.ratings||{}).map(([pid,x])=>{const nt=isDriver()?note(r.id,pid):"";return `<div class="pr"><span>${esc(pById(pid).name)}</span><span class="s">${starStr(x.stars)}</span></div>${nt?`<div class="note">“${esc(nt)}”</div>`:""}`;}).join("");
+    const conf=S.confirm==="r:"+r.id;
+    const del=!isDriver()?"":(conf?`<div class="row"><span class="muted">Delete this trip?</span><button class="btn small ghost" data-act="rmr" data-id="${esc(r.id)}">Delete</button><button class="linkbtn" data-act="noconf">Keep</button></div>`:`<div><button class="linkbtn" data-act="askrmr" data-id="${esc(r.id)}">Delete trip</button></div>`);
+    return `<div class="ride"><div class="t"><b>${fmtDate(r.date)}</b><span class="muted">${esc(r.pub||"")}</span></div>${lines}${del}</div>`;
+  }).join("")}</div>`;
+}
+
+function render(){
+  const top=`<header class="top"><div class="brand">Tamu<i>ride</i></div><span class="status">${S.stage==="trip"?"On trip":isDriver()?"Driver mode":"Thursday night"}</span></header>`;
+  let body="";
+  if(S.error) body=`<div class="err">${esc(S.error)}</div>`;
+  else if(!S.loaded) body=`<div class="empty">Loading the trip log…</div>`;
+  else if(S.tab==="ride") body=!isDriver()?viewGuest(): S.stage==="book"?viewBook(): S.stage==="trip"?viewTrip():viewRate();
+  else if(S.tab==="pax") body=viewPax();
+  else body=viewHist();
+  document.getElementById("app").innerHTML=top+body;
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-current",b.dataset.tab===S.tab?"page":"false"));
+  if(S.tab==="ride"&&S.stage!=="rate") animateCar(isDriver()&&S.stage==="trip"); else cancelAnimationFrame(raf);
+}
+
+/* ---------- events ---------- */
+let settingsTimer;
+function saveSettings(){clearTimeout(settingsTimer);settingsTimer=setTimeout(()=>call("tamu_save_settings",{p_pub:S.settings.pub,p_home:S.settings.home}),900);}
+
+document.addEventListener("click",async e=>{
+  const tb=e.target.closest("nav.tabs button,[data-act=goto]"); if(tb){S.tab=tb.dataset.tab;S.detail=null;S.confirm=null;render();window.scrollTo(0,0);return;}
+  const b=e.target.closest("[data-act]"); if(!b)return;
+  const a=b.dataset.act, id=b.dataset.id;
+  if(a==="toggle"){S.sel.has(id)?S.sel.delete(id):S.sel.add(id);render();}
+  else if(a==="start"){S.fare=FARES[Math.floor(Math.random()*FARES.length)];S.stage="trip";render();}
+  else if(a==="cancel"){S.stage="book";render();}
+  else if(a==="signout"){signOut();}
+  else if(a==="end"){S.draft={};S.sel.forEach(id=>S.draft[id]={stars:5,tags:[],note:""});S.date=today();S.stage="rate";render();window.scrollTo(0,0);}
+  else if(a==="star"){S.draft[id].stars=+b.dataset.v;render();}
+  else if(a==="tag"){const t=b.dataset.t, arr=S.draft[id].tags;const i=arr.indexOf(t);i>=0?arr.splice(i,1):arr.push(t);render();}
+  else if(a==="submit"){
+    const ratings={},notes={};
+    Object.entries(S.draft).forEach(([pid,d])=>{ratings[pid]={stars:d.stars,tags:[...d.tags]};if(d.note.trim())notes[pid]=d.note.trim();});
+    const rid="r"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    S.busy=true;render();
+    const ok=await call("tamu_save_ride",{p_id:rid,p_date:S.date||today(),p_pub:S.settings.pub,p_ratings:ratings,p_notes:notes});
+    S.busy=false;
+    if(!ok){if(isDriver())render();return;}
+    S.stage="book";S.draft={};S.tab="hist";await load();window.scrollTo(0,0);toast("Trip saved. Thanks for driving with Tamu ride");
+  }
+  else if(a==="open"){S.detail=id;S.confirm=null;render();window.scrollTo(0,0);}
+  else if(a==="close"){S.detail=null;S.confirm=null;render();}
+  else if(a==="askrmp"){S.confirm="p:"+id;render();}
+  else if(a==="askrmr"){S.confirm="r:"+id;render();}
+  else if(a==="noconf"){S.confirm=null;render();}
+  else if(a==="rmp"){S.confirm=null;if(await call("tamu_remove_passenger",{p_id:id})){S.sel.delete(id);S.detail=null;await load();}}
+  else if(a==="rmr"){S.confirm=null;if(await call("tamu_delete_ride",{p_id:id})){await load();toast("Trip deleted");}}
+});
+document.addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(e.target.id==="pinform"){
+    const pin=document.getElementById("pin").value.trim(); if(!pin)return;
+    const {data,error}=await sb.rpc("tamu_check_pin",{p_pin:pin});
+    if(error){toast("Couldn't reach the server. Try again.",true);return;}
+    if(data!==true){toast("Wrong PIN. After 5 wrong tries sign-in locks for 15 minutes.",true);return;}
+    S.pin=pin;try{localStorage.setItem("tamu_pin",pin);}catch(err){}
+    S.tab="ride";S.stage="book";await loadNotes();render();toast("Driver mode on");
+  }
+  if(e.target.id==="addform"){
+    const inp=document.getElementById("newname"); const name=inp.value.trim(); if(!name)return;
+    if(active().some(p=>p.name.toLowerCase()===name.toLowerCase())){toast(name+" is already on the list",true);return;}
+    const id=(name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"p")+"-"+Math.random().toString(36).slice(2,6);
+    if(await call("tamu_add_passenger",{p_id:id,p_name:name})){S.sel.add(id);await load();}
+  }
+});
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.id==="pub"||t.id==="home"){S.settings[t.id]=t.value;saveSettings();const txt=document.querySelectorAll(".map text");if(txt[0]&&t.id==="pub")txt[0].textContent=t.value;if(txt[1]&&t.id==="home")txt[1].textContent=t.value;}
+  else if(t.tagName==="TEXTAREA"&&t.dataset.id&&S.draft[t.dataset.id]){S.draft[t.dataset.id].note=t.value;}
+  else if(t.id==="ridedate"){S.date=t.value;}
+});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&sb&&S.stage==="book"&&!document.activeElement.matches("input,textarea"))load();});
+
+render();
+if(!window.supabase||SUPABASE_ANON_KEY.startsWith("PASTE")){
+  S.loaded=true;S.error=!window.supabase?"Couldn't load the database library. Check your connection and refresh.":"Setup step missing: paste your Supabase anon key into index.html (look for SUPABASE_ANON_KEY).";
+  render();
+}else{
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  load();
+}
+})();
+</script>
+</body>
+</html>
